@@ -1,0 +1,60 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Reviewer {
+  id         String     @id @default(cuid())
+  title      String
+  content    String // extracted plain text
+  sourceType String // "text" | "pdf" | "docx" | "image"
+  truncated  Boolean    @default(false)
+  createdAt  DateTime   @default(now())
+  questions  Question[]
+  attempts   Attempt[]
+}
+
+model Question {
+  id            String   @id @default(cuid())
+  reviewerId    String
+  reviewer      Reviewer @relation(fields: [reviewerId], references: [id], onDelete: Cascade)
+  type          String // "multiple_choice" | "true_false" | "fill_blank" | "identification"
+  prompt        String
+  choices       Json? // string[] for multiple_choice; null otherwise
+  correctAnswer String
+  explanation   String
+  order         Int
+  createdAt     DateTime @default(now())
+  answers       Answer[]
+
+  @@index([reviewerId])
+}
+
+model Attempt {
+  id         String   @id @default(cuid())
+  reviewerId String
+  reviewer   Reviewer @relation(fields: [reviewerId], references: [id], onDelete: Cascade)
+  score      Int
+  total      Int
+  createdAt  DateTime @default(now())
+  answers    Answer[]
+
+  @@index([reviewerId])
+}
+
+model Answer {
+  id         String   @id @default(cuid())
+  attemptId  String
+  attempt    Attempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id])
+  userAnswer String
+  isCorrect  Boolean
+
+  @@index([attemptId])
+  @@index([questionId])
+}

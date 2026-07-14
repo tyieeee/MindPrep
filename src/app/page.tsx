@@ -1,63 +1,40 @@
-import Image from "next/image";
+import UploadForm from "@/components/UploadForm";
 
-export default function Home() {
+export default function HomePage() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
+    <div className="flex h-dvh flex-col overflow-y-auto bg-[linear-gradient(180deg,#8aa4e8_0%,#b7c9f3_22%,#dbe6fb_45%,#f3f6fd_68%,#ffffff_88%)] p-3 sm:p-4">
+      <main className="relative flex flex-1 flex-col rounded-[28px] bg-[linear-gradient(180deg,#f6f8ff_0%,#ffffff_38%)] sm:rounded-[36px]">
+        <div className="relative z-10 flex min-h-full flex-1 flex-col">
+          <nav className="flex shrink-0 items-center justify-between px-6 py-3 sm:px-8 sm:py-4">
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-black text-base font-semibold text-white">
+                Q
+              </span>
+              <span className="text-lg font-semibold tracking-tight text-neutral-950">
+                QuizCraft
+              </span>
+            </div>
             <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+              href="#upload"
+              className="rounded-full bg-black px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-neutral-800"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+              Get started
+            </a>
+          </nav>
+
+          <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 py-2 text-center">
+            <h1 className="landing-hero-heading max-w-4xl text-[clamp(2.4rem,7.5vh,4.75rem)] leading-[1.05] text-[#0d0d12]">
+              Turn your notes into a quiz that actually tests you.
+            </h1>
+            <p className="max-w-xl text-[15px] leading-relaxed text-[#6b7185] sm:text-[17px]">
+              Upload a PDF, DOCX, photo, or pasted notes and get a
+              self-graded quiz in seconds — no account needed.
+            </p>
+
+            <div id="upload" className="theme-landing w-full max-w-lg pt-1">
+              <UploadForm />
+            </div>
+          </div>
         </div>
       </main>
     </div>
