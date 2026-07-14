@@ -2,6 +2,7 @@ import { anthropic, ANTHROPIC_MODEL } from "@/lib/anthropic";
 import {
   GenerateQuestionsResultSchema,
   QUESTION_TYPE_LABELS,
+  type Difficulty,
   type GeneratedQuestion,
   type QuestionType,
 } from "@/lib/schemas";
@@ -61,12 +62,27 @@ export function truncateReviewerText(text: string): { text: string; truncated: b
   };
 }
 
-function buildPrompt(reviewerText: string, totalQuestions: number, types: QuestionType[]) {
+const DIFFICULTY_GUIDANCE: Record<Difficulty, string> = {
+  easy: "Target an EASY difficulty: test straightforward recall of the most prominent facts and definitions. For multiple_choice, make the wrong choices clearly distinguishable from the correct answer.",
+  medium:
+    "Target a MEDIUM difficulty: mix simple recall with questions that require understanding relationships between ideas in the reviewer. Wrong multiple_choice options should be plausible but distinguishable.",
+  hard: "Target a HARD difficulty: favor questions about specific details, exceptions, and applications of the material, requiring careful reading to answer. For multiple_choice, make wrong choices subtly incorrect so the student must know the material precisely.",
+};
+
+function buildPrompt(
+  reviewerText: string,
+  totalQuestions: number,
+  types: QuestionType[],
+  difficulty: Difficulty,
+  outputInstruction: string
+) {
   const typeList = types.map((t) => `- ${t} (${QUESTION_TYPE_LABELS[t]})`).join("\n");
   return `You are a study assistant helping a student create a self-quiz from their review notes ("reviewer").
 
 Generate exactly ${totalQuestions} quiz questions based ONLY on the reviewer text below. Mix questions across these allowed types, distributing them reasonably evenly:
 ${typeList}
+
+${DIFFICULTY_GUIDANCE[difficulty]}
 
 Rules per type:
 - multiple_choice: include exactly 4 plausible choices in "choices", where "correctAnswer" is one of them verbatim.
@@ -76,7 +92,7 @@ Rules per type:
 
 Every question needs a concise "explanation" (1-2 sentences) of why the correct answer is right, grounded in the reviewer text.
 
-Call the record_questions tool exactly once with all ${totalQuestions} questions.
+${outputInstruction}
 
 Reviewer text:
 """
@@ -87,12 +103,156 @@ ${reviewerText}
 export async function generateQuestions(
   reviewerText: string,
   totalQuestions: number,
-  types: QuestionType[]
+  types: QuestionType[],
+  difficulty: Difficulty = "medium"
+): Promise<GeneratedQuestion[]> {
+  if (process.env.GEMINI_API_KEY) {
+    return generateWithGemini(reviewerText, totalQuestions, types, difficulty);
+  }
+  return generateWithAnthropic(reviewerText, totalQuestions, types, difficulty);
+}
+
+// — Gemini (free tier at https://aistudio.google.com/apikey) —
+
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-flash-latest";
+const GEMINI_FALLBACK_MODEL = "gemini-3.1-flash-lite";
+
+type GeminiContent = { role: "user" | "model"; parts: { text: string }[] };
+
+// The free tier occasionally 503s under load; retry, then switch models.
+async function callGemini(contents: GeminiContent[], maxTokens: number): Promise<string> {
+  let lastError: unknown;
+  for (const model of [GEMINI_MODEL, GEMINI_FALLBACK_MODEL]) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        return await callGeminiModel(model, contents, maxTokens);
+      } catch (err) {
+        lastError = err;
+        if ((err as { status?: number })?.status !== 503) throw err;
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+    }
+  }
+  throw lastError;
+}
+
+async function callGeminiModel(
+  model: string,
+  contents: GeminiContent[],
+  maxTokens: number
+): Promise<string> {
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": process.env.GEMINI_API_KEY as string,
+      },
+      body: JSON.stringify({
+        contents,
+        generationConfig: {
+          responseMimeType: "application/json",
+          maxOutputTokens: maxTokens,
+          thinkingConfig: { thinkingBudget: 0 },
+        },
+      }),
+    }
+  );
+  if (!res.ok) {
+    const body = await res.text();
+    const error = new Error(`Gemini ${res.status}: ${body.slice(0, 400)}`) as Error & {
+      status: number;
+    };
+    error.status = res.status;
+    throw error;
+  }
+  const data = (await res.json()) as {
+    candidates?: { content?: { parts?: { text?: string }[] } }[];
+  };
+  return (
+    data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? ""
+  );
+}
+
+function parseGeminiQuestions(text: string): GeneratedQuestion[] {
+  let json: unknown;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    throw new Error("Gemini returned invalid JSON");
+  }
+  const parsed = GenerateQuestionsResultSchema.safeParse(json);
+  if (!parsed.success) {
+    throw new Error(`Gemini's response failed validation: ${parsed.error.message}`);
+  }
+  return parsed.data.questions;
+}
+
+async function generateWithGemini(
+  reviewerText: string,
+  totalQuestions: number,
+  types: QuestionType[],
+  difficulty: Difficulty
+): Promise<GeneratedQuestion[]> {
+  const maxTokens = Math.min(64000, 2000 + 400 * totalQuestions);
+  const outputInstruction = `Respond with ONLY a JSON object of this exact shape, no markdown fences or commentary:
+{"questions": [{"type": "...", "prompt": "...", "choices": [...] or null, "correctAnswer": "...", "explanation": "..."}]}
+The "questions" array must contain exactly ${totalQuestions} items.`;
+
+  const contents: GeminiContent[] = [
+    {
+      role: "user",
+      parts: [
+        {
+          text: buildPrompt(reviewerText, totalQuestions, types, difficulty, outputInstruction),
+        },
+      ],
+    },
+  ];
+
+  let text = await callGemini(contents, maxTokens);
+  try {
+    const questions = parseGeminiQuestions(text);
+    if (questions.length === totalQuestions) return questions;
+  } catch {
+    // fall through to one corrective retry
+  }
+
+  contents.push({ role: "model", parts: [{ text }] });
+  contents.push({
+    role: "user",
+    parts: [
+      {
+        text: `That response was invalid or did not contain exactly ${totalQuestions} questions. Respond again with ONLY the JSON object, exactly ${totalQuestions} questions, following every rule.`,
+      },
+    ],
+  });
+  text = await callGemini(contents, maxTokens);
+  return parseGeminiQuestions(text);
+}
+
+// — Anthropic —
+
+async function generateWithAnthropic(
+  reviewerText: string,
+  totalQuestions: number,
+  types: QuestionType[],
+  difficulty: Difficulty
 ): Promise<GeneratedQuestion[]> {
   const maxTokens = Math.min(64000, 2000 + 400 * totalQuestions);
 
   const messages: Anthropic.MessageParam[] = [
-    { role: "user", content: buildPrompt(reviewerText, totalQuestions, types) },
+    {
+      role: "user",
+      content: buildPrompt(
+        reviewerText,
+        totalQuestions,
+        types,
+        difficulty,
+        `Call the record_questions tool exactly once with all ${totalQuestions} questions.`
+      ),
+    },
   ];
 
   let response = await anthropic.messages.create({

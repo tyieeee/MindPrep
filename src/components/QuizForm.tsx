@@ -1,16 +1,30 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { QUESTION_TYPE_LABELS } from "@/lib/schemas";
 import QuestionInput, { type QuizQuestion } from "@/components/QuestionInput";
 
-export default function QuizForm({ reviewerId }: { reviewerId: string }) {
+function formatTime(totalSeconds: number) {
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+export default function QuizForm({
+  reviewerId,
+  timeLimitSeconds = null,
+}: {
+  reviewerId: string;
+  timeLimitSeconds?: number | null;
+}) {
   const router = useRouter();
   const [questions, setQuestions] = useState<QuizQuestion[] | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const submittedRef = useRef(false);
 
   useEffect(() => {
     fetch(`/api/reviewers/${reviewerId}/questions`)
@@ -19,8 +33,21 @@ export default function QuizForm({ reviewerId }: { reviewerId: string }) {
       .catch(() => setError("Could not load the quiz."));
   }, [reviewerId]);
 
-  async function handleSubmit() {
-    if (!questions) return;
+  const questionsLoaded = questions !== null;
+
+  // Start the countdown once the questions are on screen.
+  useEffect(() => {
+    if (!questionsLoaded || timeLimitSeconds === null) return;
+    setSecondsLeft(timeLimitSeconds);
+    const id = setInterval(() => {
+      setSecondsLeft((s) => (s === null ? null : Math.max(0, s - 1)));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [questionsLoaded, timeLimitSeconds]);
+
+  const handleSubmit = useCallback(async () => {
+    if (!questions || submittedRef.current) return;
+    submittedRef.current = true;
     setError(null);
     setSubmitting(true);
     try {
@@ -41,8 +68,14 @@ export default function QuizForm({ reviewerId }: { reviewerId: string }) {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
       setSubmitting(false);
+      submittedRef.current = false;
     }
-  }
+  }, [questions, answers, reviewerId, router]);
+
+  // Time's up — submit whatever has been answered so far.
+  useEffect(() => {
+    if (secondsLeft === 0) void handleSubmit();
+  }, [secondsLeft, handleSubmit]);
 
   if (error && !questions) {
     return <p className="text-sm font-semibold text-[var(--color-accent-800)]">{error}</p>;
@@ -60,10 +93,15 @@ export default function QuizForm({ reviewerId }: { reviewerId: string }) {
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between gap-3">
           <span className="text-sm font-bold">
             {answeredCount} of {questions.length} answered
           </span>
+          {secondsLeft !== null && (
+            <span className={`quiz-timer ${secondsLeft <= 60 ? "quiz-timer-low" : ""}`}>
+              <span aria-hidden="true">⏱</span> {formatTime(secondsLeft)}
+            </span>
+          )}
         </div>
         <div className="progress-track">
           <div className="progress-fill" style={{ width: `${progressPct}%` }} />
