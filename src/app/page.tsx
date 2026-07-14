@@ -31,7 +31,7 @@ export default function HomePage() {
               self-graded quiz in seconds — no account needed.
             </p>
 
-            <div id="upload" className="theme-landing w-full max-w-lg pt-1">
+            <div id="upload" className="w-full max-w-lg pt-1">
               <UploadForm />
             </div>
           </div>

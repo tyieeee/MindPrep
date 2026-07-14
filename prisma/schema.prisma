@@ -8,11 +8,13 @@ generator client {
 }
 
 model Reviewer {
-  id         String     @id @default(cuid())
-  title      String
-  content    String // extracted plain text
-  sourceType String // "text" | "pdf" | "docx" | "image"
-  truncated  Boolean    @default(false)
+  id               String     @id @default(cuid())
+  title            String
+  content          String // extracted plain text
+  sourceType       String // "text" | "pdf" | "docx" | "image"
+  truncated        Boolean    @default(false)
+  difficulty       String     @default("medium") // "easy" | "medium" | "hard"
+  timeLimitSeconds Int? // null = no time limit
   createdAt  DateTime   @default(now())
   questions  Question[]
   attempts   Attempt[]

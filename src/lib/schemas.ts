@@ -47,9 +47,25 @@ export const GenerateQuestionsResultSchema = z.object({
 });
 export type GeneratedQuestion = z.infer<typeof QuestionSchema>;
 
+export const DIFFICULTIES = ["easy", "medium", "hard"] as const;
+
+export const Difficulty = z.enum(DIFFICULTIES);
+export type Difficulty = z.infer<typeof Difficulty>;
+
+export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
+  easy: "Easy",
+  medium: "Medium",
+  hard: "Hard",
+};
+
+// Minutes offered on the configure screen; null = no limit.
+export const TIME_LIMIT_OPTIONS = [null, 5, 10, 15, 30] as const;
+
 export const ConfigureRequestSchema = z.object({
   totalQuestions: z.number().int().min(1).max(50),
   types: z.array(QuestionType).min(1),
+  difficulty: Difficulty.default("medium"),
+  timeLimitMinutes: z.number().int().min(1).max(180).nullable().default(null),
 });
 export type ConfigureRequest = z.infer<typeof ConfigureRequestSchema>;
 
