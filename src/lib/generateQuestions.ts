@@ -69,6 +69,17 @@ const DIFFICULTY_GUIDANCE: Record<Difficulty, string> = {
   hard: "Target a HARD difficulty: favor questions about specific details, exceptions, and applications of the material, requiring careful reading to answer. For multiple_choice, make wrong choices subtly incorrect so the student must know the material precisely.",
 };
 
+const TYPE_RULES: Record<QuestionType, string> = {
+  multiple_choice:
+    '- multiple_choice: include exactly 4 plausible choices in "choices", where "correctAnswer" is one of them verbatim.',
+  true_false:
+    '- true_false: "choices" must be null, and "correctAnswer" must be exactly "True" or "False".',
+  fill_blank:
+    '- fill_blank: "choices" must be null; "prompt" should contain a blank (e.g. using "____") for the student to fill in; "correctAnswer" is the missing word/phrase.',
+  identification:
+    '- identification: "choices" must be null; "prompt" asks the student to name/identify a term, person, or concept described in the reviewer.',
+};
+
 function buildPrompt(
   reviewerText: string,
   totalQuestions: number,
@@ -77,18 +88,20 @@ function buildPrompt(
   outputInstruction: string
 ) {
   const typeList = types.map((t) => `- ${t} (${QUESTION_TYPE_LABELS[t]})`).join("\n");
+  const typeIntro =
+    types.length === 1
+      ? `Every single question's "type" must be exactly "${types[0]}" — the student chose only this type, so no other question type is allowed:`
+      : `Mix questions across these allowed types, distributing them reasonably evenly. The student chose ONLY these types — never use a type that is not in this list:`;
+  const typeRules = types.map((t) => TYPE_RULES[t]).join("\n");
   return `You are a study assistant helping a student create a self-quiz from their review notes ("reviewer").
 
-Generate exactly ${totalQuestions} quiz questions based ONLY on the reviewer text below. Mix questions across these allowed types, distributing them reasonably evenly:
+Generate exactly ${totalQuestions} quiz questions based ONLY on the reviewer text below. ${typeIntro}
 ${typeList}
 
 ${DIFFICULTY_GUIDANCE[difficulty]}
 
 Rules per type:
-- multiple_choice: include exactly 4 plausible choices in "choices", where "correctAnswer" is one of them verbatim.
-- true_false: "choices" must be null, and "correctAnswer" must be exactly "True" or "False".
-- fill_blank: "choices" must be null; "prompt" should contain a blank (e.g. using "____") for the student to fill in; "correctAnswer" is the missing word/phrase.
-- identification: "choices" must be null; "prompt" asks the student to name/identify a term, person, or concept described in the reviewer.
+${typeRules}
 
 Every question needs a concise "explanation" (1-2 sentences) of why the correct answer is right, grounded in the reviewer text.
 
@@ -98,6 +111,22 @@ Reviewer text:
 """
 ${reviewerText}
 """`;
+}
+
+function allTypesAllowed(questions: GeneratedQuestion[], types: QuestionType[]) {
+  return questions.every((q) => types.includes(q.type));
+}
+
+// Last-resort guard: drop any question of a type the student didn't pick.
+function enforceTypes(
+  questions: GeneratedQuestion[],
+  types: QuestionType[]
+): GeneratedQuestion[] {
+  const kept = questions.filter((q) => types.includes(q.type));
+  if (kept.length === 0) {
+    throw new Error("The model only produced questions of disallowed types");
+  }
+  return kept;
 }
 
 export async function generateQuestions(
@@ -119,7 +148,8 @@ const GEMINI_FALLBACK_MODEL = "gemini-3.1-flash-lite";
 
 type GeminiContent = { role: "user" | "model"; parts: { text: string }[] };
 
-// The free tier occasionally 503s under load; retry, then switch models.
+// The free tier occasionally 503s under load and 429s when a model's daily
+// quota runs out; retry 503s, and switch to the fallback model on either.
 async function callGemini(contents: GeminiContent[], maxTokens: number): Promise<string> {
   let lastError: unknown;
   for (const model of [GEMINI_MODEL, GEMINI_FALLBACK_MODEL]) {
@@ -128,7 +158,11 @@ async function callGemini(contents: GeminiContent[], maxTokens: number): Promise
         return await callGeminiModel(model, contents, maxTokens);
       } catch (err) {
         lastError = err;
-        if ((err as { status?: number })?.status !== 503) throw err;
+        const status = (err as { status?: number })?.status;
+        // Quota exhausted for this model — retrying it is pointless; move
+        // straight to the next model, which has its own quota.
+        if (status === 429) break;
+        if (status !== 503) throw err;
         await new Promise((r) => setTimeout(r, 2000));
       }
     }
@@ -214,7 +248,9 @@ The "questions" array must contain exactly ${totalQuestions} items.`;
   let text = await callGemini(contents, maxTokens);
   try {
     const questions = parseGeminiQuestions(text);
-    if (questions.length === totalQuestions) return questions;
+    if (questions.length === totalQuestions && allTypesAllowed(questions, types)) {
+      return questions;
+    }
   } catch {
     // fall through to one corrective retry
   }
@@ -224,12 +260,14 @@ The "questions" array must contain exactly ${totalQuestions} items.`;
     role: "user",
     parts: [
       {
-        text: `That response was invalid or did not contain exactly ${totalQuestions} questions. Respond again with ONLY the JSON object, exactly ${totalQuestions} questions, following every rule.`,
+        text: `That response was invalid, did not contain exactly ${totalQuestions} questions, or used a question type outside the allowed list (${types.join(
+          ", "
+        )}). Respond again with ONLY the JSON object, exactly ${totalQuestions} questions, using only the allowed types and following every rule.`,
       },
     ],
   });
   text = await callGemini(contents, maxTokens);
-  return parseGeminiQuestions(text);
+  return enforceTypes(parseGeminiQuestions(text), types);
 }
 
 // — Anthropic —
@@ -265,11 +303,13 @@ async function generateWithAnthropic(
 
   let questions = extractQuestionsFromResponse(response);
 
-  if (questions.length !== totalQuestions) {
+  if (questions.length !== totalQuestions || !allTypesAllowed(questions, types)) {
     messages.push({ role: "assistant", content: response.content });
     messages.push({
       role: "user",
-      content: `You returned ${questions.length} questions; return exactly ${totalQuestions}. Call record_questions again with the corrected full set.`,
+      content: `You returned ${questions.length} questions; return exactly ${totalQuestions}, using ONLY these question types: ${types.join(
+        ", "
+      )}. Call record_questions again with the corrected full set.`,
     });
 
     response = await anthropic.messages.create({
@@ -282,7 +322,7 @@ async function generateWithAnthropic(
     questions = extractQuestionsFromResponse(response);
   }
 
-  return questions;
+  return enforceTypes(questions, types);
 }
 
 function extractQuestionsFromResponse(

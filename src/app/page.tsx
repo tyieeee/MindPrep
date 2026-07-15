@@ -1,9 +1,13 @@
 import UploadForm from "@/components/UploadForm";
+import FloatingLights from "@/components/FloatingLights";
+import WaveLines from "@/components/WaveLines";
 
 export default function HomePage() {
   return (
     <div className="flex h-dvh flex-col overflow-y-auto bg-[linear-gradient(180deg,#8aa4e8_0%,#b7c9f3_22%,#dbe6fb_45%,#f3f6fd_68%,#ffffff_88%)] p-3 sm:p-4">
       <main className="relative flex flex-1 flex-col rounded-[28px] bg-[linear-gradient(180deg,#f6f8ff_0%,#ffffff_38%)] sm:rounded-[36px]">
+        <FloatingLights />
+        <WaveLines />
         <div className="relative z-10 flex min-h-full flex-1 flex-col">
           <nav className="flex shrink-0 items-center justify-between px-6 py-3 sm:px-8 sm:py-4">
             <div className="flex items-center gap-3">

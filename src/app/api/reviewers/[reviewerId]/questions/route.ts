@@ -23,14 +23,17 @@ export async function POST(request: Request, { params }: RouteParams) {
       { status: 400 }
     );
   }
-  const { totalQuestions, types, difficulty, timeLimitMinutes } = parsedRequest.data;
+  const { totalQuestions, types, difficulty, timeLimitMinutes, timeLimitSeconds } =
+    parsedRequest.data;
 
   const { text, truncated } = truncateReviewerText(reviewer.content);
   await prisma.reviewer.update({
     where: { id: reviewerId },
     data: {
       difficulty,
-      timeLimitSeconds: timeLimitMinutes === null ? null : timeLimitMinutes * 60,
+      timeLimitSeconds:
+        timeLimitSeconds ??
+        (timeLimitMinutes === null ? null : timeLimitMinutes * 60),
       ...(truncated ? { truncated: true } : {}),
     },
   });

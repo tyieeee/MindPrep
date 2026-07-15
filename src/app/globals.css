@@ -151,6 +151,11 @@ textarea.input { border-radius: var(--radius-lg); resize: vertical; padding: 13p
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 .chip:not(.chip-on):hover { border-color: var(--color-neutral-400); background: var(--color-neutral-100); }
+.chip-icon { padding: 8px 12px; }
+/* camera capture is a phone-only feature */
+@media (min-width: 640px) {
+  .chip-icon { display: none; }
+}
 .chip-on {
   border-color: var(--color-accent);
   background: var(--color-accent);
@@ -516,9 +521,453 @@ textarea.input { border-radius: var(--radius-lg); resize: vertical; padding: 13p
 .difficulty-medium { --dc-color: #c2570b; --dc-tint: #fff8f0; }
 .difficulty-hard { --dc-color: #c02626; --dc-tint: #fef4f3; }
 
+/* — custom time limit popup (hours : minutes : seconds) — */
+.timepick-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(10, 14, 30, 0.45);
+  backdrop-filter: blur(4px);
+  animation: drop-overlay-in 0.15s ease-out;
+}
+@media (min-width: 640px) {
+  .timepick-overlay { align-items: center; padding: 24px; }
+}
+.timepick {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+  background: #ffffff;
+  border-radius: 22px 22px 0 0;
+  padding: 24px 24px max(24px, env(safe-area-inset-bottom));
+  animation: timepick-up 0.2s ease-out;
+}
+@media (min-width: 640px) {
+  .timepick {
+    max-width: 380px;
+    border-radius: 22px;
+    padding: 28px;
+  }
+}
+@keyframes timepick-up {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.timepick-title {
+  font-size: 19px;
+  text-align: center;
+}
+.timepick-fields {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 8px;
+}
+.timepick-field {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.timepick-input {
+  width: 76px;
+  box-sizing: border-box;
+  text-align: center;
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+  background: var(--color-neutral-100);
+  border: 2px solid var(--color-neutral-300);
+  border-radius: var(--radius-md);
+  padding: 10px 4px;
+  outline: none;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.timepick-input::-webkit-outer-spin-button,
+.timepick-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.timepick-input:focus-visible {
+  border-color: var(--color-accent);
+  outline-offset: 0;
+}
+.timepick-unit {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-neutral-600);
+}
+.timepick-colon {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 52px;
+  color: var(--color-neutral-500);
+}
+.timepick-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+.timepick-actions .btn { flex: 1; }
+@media (min-width: 640px) {
+  .timepick-actions .btn { flex: 0 1 auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .timepick, .timepick-overlay { animation: none; }
+}
+
+/* — camera capture overlay (CamScanner-style single/batch) — */
+.camera-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  background: #000;
+  color: #ffffff;
+  font-family: var(--font-body), system-ui, sans-serif;
+}
+.camera-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 16px;
+  padding-top: max(14px, env(safe-area-inset-top));
+}
+.camera-close {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: none;
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  font-size: 15px;
+  cursor: pointer;
+}
+.camera-count {
+  width: 38px;
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.85);
+}
+.camera-mode-toggle {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+}
+.camera-mode-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 7px 20px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.camera-mode-on {
+  background: #ffffff;
+  color: #111116;
+}
+.camera-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.camera-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #000;
+}
+.camera-flash {
+  position: absolute;
+  inset: 0;
+  background: #ffffff;
+  animation: camera-flash-fade 0.16s ease-out forwards;
+  pointer-events: none;
+}
+@keyframes camera-flash-fade {
+  from { opacity: 0.9; }
+  to { opacity: 0; }
+}
+.camera-hint {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 999px;
+  padding: 6px 16px;
+  pointer-events: none;
+}
+.camera-bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 20px;
+  padding-bottom: max(18px, env(safe-area-inset-bottom));
+}
+.camera-thumbs {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 4px 2px;
+}
+.camera-thumb {
+  position: relative;
+  flex-shrink: 0;
+}
+.camera-thumb img {
+  width: 52px;
+  height: 52px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  display: block;
+}
+.camera-thumb-x {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: none;
+  background: #ffffff;
+  color: #111116;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+.camera-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.camera-cancel,
+.camera-done {
+  min-width: 92px;
+  border: none;
+  border-radius: 999px;
+  padding: 11px 18px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+}
+.camera-cancel {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  text-align: center;
+}
+.camera-done {
+  background: #ffffff;
+  color: #111116;
+  text-align: center;
+}
+.camera-spacer {
+  min-width: 92px;
+}
+.camera-shutter {
+  width: 70px;
+  height: 70px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 4px solid #ffffff;
+  background: transparent;
+  padding: 4px;
+  cursor: pointer;
+}
+.camera-shutter span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  background: #ffffff;
+  transition: transform 0.1s ease;
+}
+.camera-shutter:active span {
+  transform: scale(0.85);
+}
+.camera-fallback {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px;
+  text-align: center;
+}
+.camera-fallback-title {
+  font-size: 19px;
+  font-weight: 800;
+}
+.camera-fallback-text {
+  max-width: 320px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.75);
+}
+
 /* — landing page: bold sans hero heading — */
 .landing-hero-heading {
   font-family: var(--font-body), system-ui, sans-serif;
   font-weight: 800;
   letter-spacing: -0.02em;
+}
+
+/* — ambient floating lights (landing + configure) — */
+.glow-field {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  /* matches the rounded card frame so orbs never bleed past its corners */
+  border-radius: 28px;
+}
+@media (min-width: 640px) {
+  .glow-field { border-radius: 36px; }
+}
+.glow-orb {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(70px);
+  will-change: transform;
+  animation: glow-drift var(--glow-dur, 26s) ease-in-out var(--glow-delay, 0s) infinite alternate;
+}
+.glow-orb-1 {
+  width: 360px;
+  height: 360px;
+  top: -110px;
+  left: -90px;
+  background: radial-gradient(circle, rgba(138, 164, 232, 0.4), transparent 70%);
+  --glow-x: 70px;
+  --glow-y: 40px;
+  --glow-dur: 26s;
+}
+.glow-orb-2 {
+  width: 300px;
+  height: 300px;
+  top: 18%;
+  right: -80px;
+  background: radial-gradient(circle, rgba(195, 208, 250, 0.5), transparent 70%);
+  --glow-x: -60px;
+  --glow-y: 55px;
+  --glow-dur: 32s;
+  --glow-delay: -8s;
+}
+.glow-orb-3 {
+  width: 320px;
+  height: 320px;
+  bottom: -100px;
+  left: 22%;
+  background: radial-gradient(circle, rgba(170, 183, 230, 0.35), transparent 70%);
+  --glow-x: 80px;
+  --glow-y: -45px;
+  --glow-dur: 29s;
+  --glow-delay: -14s;
+}
+.glow-orb-4 {
+  width: 220px;
+  height: 220px;
+  top: 40%;
+  left: -70px;
+  background: radial-gradient(circle, rgba(219, 228, 254, 0.55), transparent 70%);
+  --glow-x: 55px;
+  --glow-y: -60px;
+  --glow-dur: 23s;
+  --glow-delay: -4s;
+}
+@keyframes glow-drift {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(var(--glow-x, 50px), var(--glow-y, -40px), 0) scale(1.12); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .glow-orb { animation: none; }
+}
+
+/* — animated purple wave lines (landing) — */
+.wave-field {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: 28px;
+}
+@media (min-width: 640px) {
+  .wave-field { border-radius: 36px; }
+}
+.wave {
+  position: absolute;
+  overflow: visible;
+}
+.wave-right {
+  top: 8px;
+  right: -28px;
+  height: 101%;
+  animation: wave-sway 13s ease-in-out infinite alternate;
+}
+.wave-left {
+  bottom: 4%;
+  left: -60px;
+  width: clamp(240px, 34vw, 460px);
+  animation: wave-sway 16s ease-in-out -6s infinite alternate-reverse;
+}
+@media (max-width: 639px) {
+  .wave-left { display: none; }
+}
+.wave-stroke {
+  stroke: #c4b5fd;
+  stroke-opacity: 0.45;
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+/* traveling light pulse: one short bright dash flowing along the line */
+.wave-glow {
+  stroke: #8b5cf6;
+  stroke-opacity: 0.4;
+  stroke-width: 5;
+  stroke-linecap: round;
+  filter: blur(4px);
+  stroke-dasharray: 14 86;
+  animation: wave-flow 9s linear infinite;
+}
+.wave-left .wave-glow { animation-duration: 7s; animation-delay: -3s; }
+@keyframes wave-flow {
+  from { stroke-dashoffset: 100; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes wave-sway {
+  from { transform: translateY(-10px) rotate(-0.8deg); }
+  to { transform: translateY(12px) rotate(0.8deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wave, .wave-glow { animation: none; }
 }
