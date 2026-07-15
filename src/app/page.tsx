@@ -39,6 +39,10 @@ export default function HomePage() {
               <UploadForm />
             </div>
           </div>
+
+          <footer className="shrink-0 pb-4 pt-2 text-center text-xs font-medium text-[var(--color-neutral-500)]">
+            Developed by Archie Dela Cruz
+          </footer>
         </div>
       </main>
     </div>

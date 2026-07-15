@@ -25,9 +25,23 @@ export default function QuizForm({
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [gradeProgress, setGradeProgress] = useState(0);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const submittedRef = useRef(false);
+
+  // Estimated grading progress: creep toward 95%, jump to 100% on response.
+  useEffect(() => {
+    if (!submitting) return;
+    setGradeProgress(0);
+    const tickMs = 120;
+    const estimatedMs = 4000;
+    const step = 95 / (estimatedMs / tickMs);
+    const id = setInterval(() => {
+      setGradeProgress((p) => Math.min(95, p + step));
+    }, tickMs);
+    return () => clearInterval(id);
+  }, [submitting]);
 
   useEffect(() => {
     fetch(`/api/reviewers/${reviewerId}/questions`)
@@ -67,6 +81,7 @@ export default function QuizForm({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Submission failed.");
+      setGradeProgress(100);
       router.push(`/results/${data.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -142,6 +157,38 @@ export default function QuizForm({
       >
         {submitting ? "Grading…" : "Submit answers"}
       </button>
+
+      {submitting && (
+        <div
+          className="difficulty-overlay"
+          role="status"
+          aria-live="polite"
+          aria-label="Grading your quiz"
+        >
+          <div className="gen-loading">
+            <h2 className="text-2xl text-white">Grading your quiz…</h2>
+            <p className="text-[15px] text-white/70">
+              {gradeProgress < 45
+                ? "Hang tight — we're checking each answer…"
+                : gradeProgress < 85
+                  ? "Calculating your score…"
+                  : "Almost done…"}
+            </p>
+            <div className="gen-progress-track">
+              <div
+                className="gen-progress-fill"
+                style={{ width: `${gradeProgress}%` }}
+              />
+            </div>
+            <p className="text-lg font-bold text-white">
+              {Math.round(gradeProgress)}%
+            </p>
+            <p className="text-xs text-white/50">
+              This only takes a few seconds — keep this tab open.
+            </p>
+          </div>
+        </div>
+      )}
 
       {confirmOpen && (
         <div

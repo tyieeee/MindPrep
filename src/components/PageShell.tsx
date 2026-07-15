@@ -8,10 +8,11 @@ export default function PageShell({ children }: { children: React.ReactNode }) {
   // The landing page renders its own full-screen frame.
   if (pathname === "/") return <>{children}</>;
 
-  // No back button on results (has its own actions) or during a quiz
-  // (leaving mid-quiz would lose the answers).
+  // No back button on results (it gets a Home button instead) or during a
+  // quiz (leaving mid-quiz would lose the answers).
   const showBack =
     !pathname.startsWith("/results") && !pathname.startsWith("/quiz");
+  const showHome = pathname.startsWith("/results");
 
   return (
     <div className="flex min-h-dvh flex-col bg-[linear-gradient(180deg,#8aa4e8_0%,#b7c9f3_22%,#dbe6fb_45%,#f3f6fd_68%,#ffffff_88%)] p-3 sm:p-4">
@@ -48,6 +49,31 @@ export default function PageShell({ children }: { children: React.ReactNode }) {
                 <path d="M12 19l-7-7 7-7" />
               </svg>
               <span className="hidden sm:inline">Back</span>
+            </button>
+          )}
+          {showHome && (
+            <button
+              type="button"
+              onClick={() => router.push("/")}
+              aria-label="Back to home"
+              className="flex items-center rounded-full border-2 border-neutral-200 px-3 py-2 text-sm font-semibold text-neutral-900 transition hover:border-neutral-300 hover:bg-neutral-100 sm:px-5"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+                className="sm:hidden"
+              >
+                <path d="M3 10.5 12 3l9 7.5" />
+                <path d="M5 9.5V21h5v-6h4v6h5V9.5" />
+              </svg>
+              <span className="hidden sm:inline">Home</span>
             </button>
           )}
         </nav>
