@@ -25,6 +25,7 @@ export default function QuizForm({
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const submittedRef = useRef(false);
 
@@ -94,7 +95,7 @@ export default function QuizForm({
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-2">
+      <div className="sticky top-3 z-20 flex flex-col gap-2 rounded-2xl bg-white/90 px-4 py-3 shadow-[0_14px_36px_-14px_rgba(30,40,90,0.35)] backdrop-blur-md">
         <div className="flex items-center justify-between gap-3">
           <span className="text-sm font-bold">
             {answeredCount} of {questions.length} answered
@@ -108,6 +109,11 @@ export default function QuizForm({
         <div className="progress-track">
           <div className="progress-fill" style={{ width: `${progressPct}%` }} />
         </div>
+        {secondsLeft !== null && secondsLeft > 0 && secondsLeft <= 60 && (
+          <p className="text-xs font-bold text-[var(--color-danger-800)]" role="alert">
+            Time&apos;s almost up — your answers will be submitted automatically.
+          </p>
+        )}
       </div>
 
       {questions.map((question, i) => (
@@ -130,12 +136,54 @@ export default function QuizForm({
 
       <button
         type="button"
-        onClick={handleSubmit}
+        onClick={() => setConfirmOpen(true)}
         disabled={submitting}
         className="btn btn-primary self-start"
       >
         {submitting ? "Grading…" : "Submit answers"}
       </button>
+
+      {confirmOpen && (
+        <div
+          className="timepick-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Confirm submission"
+          onClick={() => {
+            if (!submitting) setConfirmOpen(false);
+          }}
+        >
+          <div className="timepick" onClick={(e) => e.stopPropagation()}>
+            <h2 className="timepick-title">Submit your answers?</h2>
+            <p className="text-center text-sm text-[var(--color-neutral-700)]">
+              You&apos;ve answered {answeredCount} of {questions.length} questions.
+              {answeredCount < questions.length &&
+                " Unanswered questions will be counted as wrong."}
+            </p>
+            <div className="timepick-actions">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                disabled={submitting}
+                onClick={() => setConfirmOpen(false)}
+              >
+                Keep answering
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={submitting}
+                onClick={() => {
+                  setConfirmOpen(false);
+                  void handleSubmit();
+                }}
+              >
+                Submit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -16,8 +16,39 @@ export default function UploadForm() {
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const dragCounter = useRef(0);
+
+  // Photos go through AI OCR (a few seconds per page); documents are quick.
+  const isImage = (f: File) =>
+    f.type.startsWith("image/") || /\.(png|jpe?g|webp)$/i.test(f.name);
+  const estimatedSeconds =
+    mode === "paste"
+      ? 2
+      : 3 + files.filter(isImage).length * 5;
+
+  // Estimated progress: creep toward 95% over the expected duration, then
+  // jump to 100% when the server actually responds.
+  useEffect(() => {
+    if (!submitting) return;
+    setProgress(0);
+    const tickMs = 150;
+    const step = 95 / ((estimatedSeconds * 1000) / tickMs);
+    const id = setInterval(() => {
+      setProgress((p) => Math.min(95, p + step));
+    }, tickMs);
+    return () => clearInterval(id);
+  }, [submitting, estimatedSeconds]);
+
+  const progressLabel =
+    progress < 30
+      ? "Uploading your file…"
+      : progress < 75
+        ? files.some(isImage)
+          ? "Reading your notes (OCR)…"
+          : "Extracting the text…"
+        : "Almost done…";
 
   const hasContent = mode === "paste" ? text.trim().length > 0 : files.length > 0;
 
@@ -121,6 +152,7 @@ export default function UploadForm() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Upload failed.");
 
+      setProgress(100);
       router.push(`/configure/${data.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -233,10 +265,24 @@ export default function UploadForm() {
 
         {error && <p className="text-sm font-semibold text-[var(--color-accent-800)]">{error}</p>}
 
-        {hasContent && (
-          <button type="submit" disabled={submitting} className="btn btn-primary self-start">
-            {submitting ? "Uploading…" : "Continue"}
+        {hasContent && !submitting && (
+          <button type="submit" className="btn btn-primary self-start">
+            Continue
           </button>
+        )}
+
+        {submitting && (
+          <div className="flex flex-col gap-1.5" role="status" aria-live="polite">
+            <div className="flex items-center justify-between text-sm font-semibold">
+              <span className="text-[var(--color-neutral-700)]">{progressLabel}</span>
+              <span className="text-[var(--color-neutral-600)]">
+                {Math.round(progress)}%
+              </span>
+            </div>
+            <div className="progress-track">
+              <div className="progress-fill" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
         )}
       </form>
     </div>
