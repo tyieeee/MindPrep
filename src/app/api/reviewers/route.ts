@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { extractFromFile } from "@/lib/extract";
 
 export const runtime = "nodejs";
+// Vercel: allow time for OCR of multi-page photo batches.
+export const maxDuration = 60;
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10MB per file
 const MAX_FILES = 12;

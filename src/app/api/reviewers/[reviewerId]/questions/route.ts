@@ -4,6 +4,8 @@ import { generateQuestions, truncateReviewerText } from "@/lib/generateQuestions
 import { ConfigureRequestSchema } from "@/lib/schemas";
 
 export const runtime = "nodejs";
+// Vercel: question generation regularly takes 30s+, plus one corrective retry.
+export const maxDuration = 60;
 
 type RouteParams = { params: Promise<{ reviewerId: string }> };
 
