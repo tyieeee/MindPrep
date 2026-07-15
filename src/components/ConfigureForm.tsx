@@ -18,13 +18,34 @@ const DIFFICULTY_DESCRIPTIONS: Record<Difficulty, string> = {
   hard: "Tricky details, applications, and subtly wrong answers. Prove you know it.",
 };
 
+function formatDuration(totalSeconds: number) {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  const parts: string[] = [];
+  if (h) parts.push(`${h}h`);
+  if (m) parts.push(`${m}m`);
+  if (s) parts.push(`${s}s`);
+  return parts.join(" ") || "0s";
+}
+
+function clampPart(value: number, max: number) {
+  if (!Number.isFinite(value)) return 0;
+  return Math.min(max, Math.max(0, Math.trunc(value)));
+}
+
 export default function ConfigureForm({ reviewerId }: { reviewerId: string }) {
   const router = useRouter();
   const [totalQuestions, setTotalQuestions] = useState(10);
   const [types, setTypes] = useState<QuestionType[]>([...QUESTION_TYPES]);
   const [timeLimitMinutes, setTimeLimitMinutes] = useState<number | null>(null);
   const [customTime, setCustomTime] = useState(false);
-  const [customMinutes, setCustomMinutes] = useState(20);
+  const [customSeconds, setCustomSeconds] = useState(20 * 60);
+  const [timePickerOpen, setTimePickerOpen] = useState(false);
+  const [pickH, setPickH] = useState(0);
+  const [pickM, setPickM] = useState(20);
+  const [pickS, setPickS] = useState(0);
+  const [pickError, setPickError] = useState<string | null>(null);
   const [choosingDifficulty, setChoosingDifficulty] = useState(false);
   const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
   const [generating, setGenerating] = useState(false);
@@ -61,7 +82,29 @@ export default function ConfigureForm({ reviewerId }: { reviewerId: string }) {
     );
   }
 
-  const effectiveTimeLimit = customTime ? customMinutes : timeLimitMinutes;
+  function openTimePicker() {
+    setPickH(Math.floor(customSeconds / 3600));
+    setPickM(Math.floor((customSeconds % 3600) / 60));
+    setPickS(customSeconds % 60);
+    setPickError(null);
+    setTimePickerOpen(true);
+  }
+
+  function confirmTimePicker() {
+    const total = pickH * 3600 + pickM * 60 + pickS;
+    if (total < 1) {
+      setPickError("Set a time limit greater than zero.");
+      return;
+    }
+    if (total > 10800) {
+      setPickError("Time limit can be at most 3 hours.");
+      return;
+    }
+    setCustomSeconds(total);
+    setCustomTime(true);
+    setTimeLimitMinutes(null);
+    setTimePickerOpen(false);
+  }
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -69,10 +112,6 @@ export default function ConfigureForm({ reviewerId }: { reviewerId: string }) {
 
     if (types.length === 0) {
       setError("Select at least one question type.");
-      return;
-    }
-    if (customTime && (!Number.isInteger(customMinutes) || customMinutes < 1 || customMinutes > 180)) {
-      setError("Enter a time limit between 1 and 180 minutes.");
       return;
     }
     setDifficulty(null);
@@ -91,7 +130,8 @@ export default function ConfigureForm({ reviewerId }: { reviewerId: string }) {
           totalQuestions,
           types,
           difficulty,
-          timeLimitMinutes: effectiveTimeLimit,
+          timeLimitMinutes: customTime ? null : timeLimitMinutes,
+          timeLimitSeconds: customTime ? customSeconds : null,
         }),
       });
       const data = await res.json();
@@ -172,27 +212,12 @@ export default function ConfigureForm({ reviewerId }: { reviewerId: string }) {
               })}
               <button
                 type="button"
-                onClick={() => setCustomTime(true)}
+                onClick={openTimePicker}
                 aria-pressed={customTime}
                 className={`chip ${customTime ? "chip-on" : ""}`}
               >
-                Custom
+                {customTime ? `Custom · ${formatDuration(customSeconds)}` : "Custom"}
               </button>
-              {customTime && (
-                <span className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min={1}
-                    max={180}
-                    value={customMinutes}
-                    onChange={(e) => setCustomMinutes(Number(e.target.value))}
-                    aria-label="Custom time limit in minutes"
-                    autoFocus
-                    className="input w-24"
-                  />
-                  <span className="text-sm text-[var(--color-neutral-600)]">minutes</span>
-                </span>
-              )}
             </div>
           </div>
         </div>
@@ -205,6 +230,85 @@ export default function ConfigureForm({ reviewerId }: { reviewerId: string }) {
           Confirm
         </button>
       </form>
+
+      {timePickerOpen && (
+        <div
+          className="timepick-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Custom time limit"
+          onClick={() => setTimePickerOpen(false)}
+        >
+          <div className="timepick" onClick={(e) => e.stopPropagation()}>
+            <h2 className="timepick-title">Custom time limit</h2>
+            <div className="timepick-fields">
+              <span className="timepick-field">
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={3}
+                  value={pickH}
+                  autoFocus
+                  onChange={(e) => setPickH(clampPart(Number(e.target.value), 3))}
+                  aria-label="Hours"
+                  className="timepick-input"
+                />
+                <span className="timepick-unit">hours</span>
+              </span>
+              <span className="timepick-colon" aria-hidden>
+                :
+              </span>
+              <span className="timepick-field">
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={59}
+                  value={pickM}
+                  onChange={(e) => setPickM(clampPart(Number(e.target.value), 59))}
+                  aria-label="Minutes"
+                  className="timepick-input"
+                />
+                <span className="timepick-unit">minutes</span>
+              </span>
+              <span className="timepick-colon" aria-hidden>
+                :
+              </span>
+              <span className="timepick-field">
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={59}
+                  value={pickS}
+                  onChange={(e) => setPickS(clampPart(Number(e.target.value), 59))}
+                  aria-label="Seconds"
+                  className="timepick-input"
+                />
+                <span className="timepick-unit">seconds</span>
+              </span>
+            </div>
+            {pickError && (
+              <p className="text-sm font-semibold text-[var(--color-accent-800)]">
+                {pickError}
+              </p>
+            )}
+            <div className="timepick-actions">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setTimePickerOpen(false)}
+              >
+                Cancel
+              </button>
+              <button type="button" className="btn btn-primary" onClick={confirmTimePicker}>
+                Set limit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {choosingDifficulty && (
         <div

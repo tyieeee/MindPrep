@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import CameraCapture from "@/components/CameraCapture";
 
 type Mode = "paste" | "file";
 
@@ -11,13 +12,14 @@ export default function UploadForm() {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("file");
   const [text, setText] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const dragCounter = useRef(0);
 
-  const hasContent = mode === "paste" ? text.trim().length > 0 : file !== null;
+  const hasContent = mode === "paste" ? text.trim().length > 0 : files.length > 0;
 
   function acceptFile(dropped: File) {
     const ext = dropped.name.slice(dropped.name.lastIndexOf(".")).toLowerCase();
@@ -26,7 +28,7 @@ export default function UploadForm() {
       return;
     }
     setError(null);
-    setFile(dropped);
+    setFiles([dropped]);
   }
 
   // Watch the whole window for an incoming file drag so the dropzone lights
@@ -77,6 +79,14 @@ export default function UploadForm() {
     };
   }, []);
 
+  function handlePhotos(photos: File[]) {
+    setCameraOpen(false);
+    if (photos.length === 0) return;
+    setError(null);
+    setMode("file");
+    setFiles(photos);
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
@@ -85,7 +95,7 @@ export default function UploadForm() {
       setError("Paste your reviewer text first.");
       return;
     }
-    if (mode === "file" && !file) {
+    if (mode === "file" && files.length === 0) {
       setError("Choose a file to upload.");
       return;
     }
@@ -93,15 +103,18 @@ export default function UploadForm() {
     setSubmitting(true);
     try {
       const form = new FormData();
+      const isCameraScan = files.length > 0 && files[0].name.startsWith("scan-");
       const fallbackTitle =
-        mode === "file" && file
-          ? file.name.replace(/\.[^./\\]+$/, "")
+        mode === "file" && files.length > 0
+          ? isCameraScan
+            ? "Camera scan"
+            : files[0].name.replace(/\.[^./\\]+$/, "")
           : "Untitled Reviewer";
       form.set("title", fallbackTitle || "Untitled Reviewer");
       if (mode === "paste") {
         form.set("text", text);
-      } else if (file) {
-        form.set("file", file);
+      } else {
+        files.forEach((f) => form.append("files", f));
       }
 
       const res = await fetch("/api/reviewers", { method: "POST", body: form });
@@ -114,6 +127,13 @@ export default function UploadForm() {
       setSubmitting(false);
     }
   }
+
+  const fileLabel =
+    files.length > 1
+      ? `✓ ${files.length} photos captured`
+      : files.length === 1
+        ? `✓ ${files[0].name}`
+        : "Upload your reviewer file";
 
   return (
     <div className="relative rounded-[22px] bg-white p-5 shadow-[0_20px_60px_-15px_rgba(30,40,90,0.25)] sm:p-7">
@@ -129,14 +149,40 @@ export default function UploadForm() {
         </div>
       )}
 
+      {cameraOpen && (
+        <CameraCapture onDone={handlePhotos} onClose={() => setCameraOpen(false)} />
+      )}
+
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => setMode("file")}
             className={`chip ${mode === "file" ? "chip-on" : ""}`}
           >
             Upload file
+          </button>
+          <button
+            type="button"
+            onClick={() => setCameraOpen(true)}
+            className="chip chip-icon"
+            aria-label="Take photo"
+            title="Take photo"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+              <circle cx="12" cy="13" r="4" />
+            </svg>
           </button>
           <button
             type="button"
@@ -163,9 +209,7 @@ export default function UploadForm() {
             >
               <span className="dropzone-icon">↑</span>
               <span>
-                <span className="block text-[15px] font-bold">
-                  {file ? `✓ ${file.name}` : "Upload your reviewer file"}
-                </span>
+                <span className="block text-[15px] font-bold">{fileLabel}</span>
                 <span className="block text-sm text-[var(--color-neutral-600)]">
                   .txt, .pdf, .docx, or a photo · drag & drop or click to browse
                 </span>

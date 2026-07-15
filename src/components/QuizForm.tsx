@@ -6,9 +6,11 @@ import { QUESTION_TYPE_LABELS } from "@/lib/schemas";
 import QuestionInput, { type QuizQuestion } from "@/components/QuestionInput";
 
 function formatTime(totalSeconds: number) {
-  const m = Math.floor(totalSeconds / 60);
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
   const s = totalSeconds % 60;
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  const ms = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  return h > 0 ? `${h}:${ms}` : ms;
 }
 
 export default function QuizForm({

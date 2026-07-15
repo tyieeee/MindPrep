@@ -66,6 +66,8 @@ export const ConfigureRequestSchema = z.object({
   types: z.array(QuestionType).min(1),
   difficulty: Difficulty.default("medium"),
   timeLimitMinutes: z.number().int().min(1).max(180).nullable().default(null),
+  // Exact custom limit (hours:minutes:seconds picker); wins over timeLimitMinutes.
+  timeLimitSeconds: z.number().int().min(1).max(10800).nullable().default(null),
 });
 export type ConfigureRequest = z.infer<typeof ConfigureRequestSchema>;
 

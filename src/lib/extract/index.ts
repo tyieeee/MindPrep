@@ -15,8 +15,16 @@ export function detectSourceType(file: File): SourceType {
     name.endsWith(".docx")
   )
     return "docx";
-  if (type.startsWith("image/")) return "image";
+  if (type.startsWith("image/") || /\.(png|jpe?g|webp)$/.test(name)) return "image";
   return "text";
+}
+
+function imageMimeType(file: File): string {
+  if (file.type.startsWith("image/")) return file.type;
+  const name = file.name.toLowerCase();
+  if (name.endsWith(".png")) return "image/png";
+  if (name.endsWith(".webp")) return "image/webp";
+  return "image/jpeg";
 }
 
 export async function extractFromFile(
@@ -34,7 +42,7 @@ export async function extractFromFile(
       text = await extractDocx(buffer);
       break;
     case "image":
-      text = await extractImage(buffer);
+      text = await extractImage(buffer, imageMimeType(file));
       break;
     default:
       text = await extractText(buffer);
