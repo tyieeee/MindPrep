@@ -32,13 +32,13 @@ export default function QuestionResultCard({
         <span className="font-semibold text-[var(--color-neutral-500)]">Your answer</span>
         <span
           className={`font-bold ${
-            result.isCorrect ? "text-[var(--color-accent2-800)]" : "text-[var(--color-accent-800)]"
+            result.isCorrect ? "text-[var(--color-success-800)]" : "text-[var(--color-accent-800)]"
           }`}
         >
           {result.userAnswer || <em>(blank)</em>}
         </span>
         <span className="font-semibold text-[var(--color-neutral-500)]">Correct</span>
-        <span className="font-bold text-[var(--color-accent2-800)]">{result.correctAnswer}</span>
+        <span className="font-bold text-[var(--color-success-800)]">{result.correctAnswer}</span>
       </div>
       <div className="mt-3 rounded-[var(--radius-lg)] bg-[var(--color-accent2-100)] px-4 py-3 text-sm leading-relaxed text-[var(--color-accent2-900)]">
         {result.explanation}

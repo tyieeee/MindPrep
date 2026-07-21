@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Figtree } from "next/font/google";
+import { Figtree, Dancing_Script } from "next/font/google";
 import "./globals.css";
 import PageShell from "@/components/PageShell";
 
@@ -8,8 +8,14 @@ const figtree = Figtree({
   subsets: ["latin"],
 });
 
+const dancingScript = Dancing_Script({
+  variable: "--font-brand",
+  subsets: ["latin"],
+  weight: ["700"],
+});
+
 export const metadata: Metadata = {
-  title: "QuizCraft",
+  title: "Shajie's Reviewer",
   description: "Turn your study reviewer into a self-quiz.",
 };
 
@@ -19,7 +25,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${figtree.variable} h-full antialiased`}>
+    <html lang="en" className={`${figtree.variable} ${dancingScript.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <PageShell>{children}</PageShell>
       </body>

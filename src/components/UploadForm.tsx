@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import CameraCapture from "@/components/CameraCapture";
+import PasscodeGate, { PASSCODE_STORAGE_KEY } from "@/components/PasscodeGate";
 
 type Mode = "paste" | "file";
 
@@ -10,6 +11,8 @@ const ACCEPTED_EXTENSIONS = [".txt", ".pdf", ".docx", ".png", ".jpg", ".jpeg", "
 
 export default function UploadForm() {
   const router = useRouter();
+  const [unlocked, setUnlocked] = useState(false);
+  const [showPasscodeModal, setShowPasscodeModal] = useState(false);
   const [mode, setMode] = useState<Mode>("file");
   const [text, setText] = useState("");
   const [files, setFiles] = useState<File[]>([]);
@@ -19,6 +22,10 @@ export default function UploadForm() {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const dragCounter = useRef(0);
+
+  useEffect(() => {
+    if (sessionStorage.getItem(PASSCODE_STORAGE_KEY) === "1") setUnlocked(true);
+  }, []);
 
   // Photos go through AI OCR (a few seconds per page); documents are quick.
   const isImage = (f: File) =>
@@ -169,6 +176,45 @@ export default function UploadForm() {
 
   return (
     <div className="relative rounded-[22px] bg-white p-5 shadow-[0_20px_60px_-15px_rgba(30,40,90,0.25)] sm:p-7">
+      {!unlocked && (
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 rounded-[22px] bg-white/15 backdrop-blur-sm">
+          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-accent-200)]">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent-700)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <rect x="4" y="10.5" width="16" height="10" rx="2.5" />
+              <path d="M7.5 10.5V7a4.5 4.5 0 0 1 9 0v3.5" />
+            </svg>
+          </span>
+          <button
+            type="button"
+            onClick={() => setShowPasscodeModal(true)}
+            className="btn btn-primary"
+          >
+            Use passcode to unlock
+          </button>
+        </div>
+      )}
+
+      {showPasscodeModal && (
+        <div
+          className="fixed inset-0 z-30 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+          onClick={() => setShowPasscodeModal(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-[22px] bg-white shadow-[0_20px_60px_-15px_rgba(30,40,90,0.35)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <PasscodeGate
+              onUnlock={() => {
+                setUnlocked(true);
+                setShowPasscodeModal(false);
+              }}
+              onClose={() => setShowPasscodeModal(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      <div className={!unlocked ? "pointer-events-none select-none blur-sm" : ""} aria-hidden={!unlocked}>
       {isDraggingFile && (
         <div className="drop-overlay-page" aria-hidden="true">
           <span className="drop-overlay-ring">
@@ -285,6 +331,7 @@ export default function UploadForm() {
           </div>
         )}
       </form>
+      </div>
     </div>
   );
 }
