@@ -158,8 +158,14 @@ export default function ConfigureForm({ reviewerId }: { reviewerId: string }) {
               type="number"
               min={1}
               max={50}
-              value={totalQuestions}
-              onChange={(e) => setTotalQuestions(Number(e.target.value))}
+              value={totalQuestions === 0 ? "" : totalQuestions}
+              onChange={(e) => {
+                const raw = e.target.value;
+                setTotalQuestions(raw === "" ? 0 : Number(raw));
+              }}
+              onBlur={() => {
+                if (!totalQuestions) setTotalQuestions(1);
+              }}
               className="input w-28"
             />
           </div>
