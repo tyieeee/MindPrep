@@ -5,6 +5,7 @@ import {
   type Difficulty,
   type GeneratedQuestion,
   type QuestionType,
+  type QuizMode,
 } from "@/lib/schemas";
 import type Anthropic from "@anthropic-ai/sdk";
 
@@ -69,6 +70,13 @@ const DIFFICULTY_GUIDANCE: Record<Difficulty, string> = {
   hard: "Target a HARD difficulty: favor questions about specific details, exceptions, and applications of the material, requiring careful reading to answer. For multiple_choice, make wrong choices subtly incorrect so the student must know the material precisely.",
 };
 
+const QUIZ_MODE_GUIDANCE: Record<QuizMode, string> = {
+  content:
+    "Base each question directly on facts, definitions, and details stated in the reviewer text — test recall and understanding of the material itself.",
+  situational:
+    "Frame EVERY question as a realistic scenario or case the student might actually encounter, requiring them to apply a concept from the reviewer to decide the correct action, judgment, or outcome — do not directly quote or ask the student to recall reviewer text verbatim. The correct answer and explanation must still be objectively grounded in and justified by the reviewer material, not general common sense.",
+};
+
 const TYPE_RULES: Record<QuestionType, string> = {
   multiple_choice:
     '- multiple_choice: include exactly 4 plausible choices in "choices", where "correctAnswer" is one of them verbatim.',
@@ -85,6 +93,7 @@ function buildPrompt(
   totalQuestions: number,
   types: QuestionType[],
   difficulty: Difficulty,
+  mode: QuizMode,
   outputInstruction: string
 ) {
   const typeList = types.map((t) => `- ${t} (${QUESTION_TYPE_LABELS[t]})`).join("\n");
@@ -99,6 +108,8 @@ Generate exactly ${totalQuestions} quiz questions based ONLY on the reviewer tex
 ${typeList}
 
 ${DIFFICULTY_GUIDANCE[difficulty]}
+
+${QUIZ_MODE_GUIDANCE[mode]}
 
 Rules per type:
 ${typeRules}
@@ -133,12 +144,13 @@ export async function generateQuestions(
   reviewerText: string,
   totalQuestions: number,
   types: QuestionType[],
-  difficulty: Difficulty = "medium"
+  difficulty: Difficulty = "medium",
+  mode: QuizMode = "content"
 ): Promise<GeneratedQuestion[]> {
   if (process.env.GEMINI_API_KEY) {
-    return generateWithGemini(reviewerText, totalQuestions, types, difficulty);
+    return generateWithGemini(reviewerText, totalQuestions, types, difficulty, mode);
   }
-  return generateWithAnthropic(reviewerText, totalQuestions, types, difficulty);
+  return generateWithAnthropic(reviewerText, totalQuestions, types, difficulty, mode);
 }
 
 // — Gemini (free tier at https://aistudio.google.com/apikey) —
@@ -188,7 +200,6 @@ async function callGeminiModel(
         generationConfig: {
           responseMimeType: "application/json",
           maxOutputTokens: maxTokens,
-          thinkingConfig: { thinkingBudget: 0 },
         },
       }),
     }
@@ -227,7 +238,8 @@ async function generateWithGemini(
   reviewerText: string,
   totalQuestions: number,
   types: QuestionType[],
-  difficulty: Difficulty
+  difficulty: Difficulty,
+  mode: QuizMode
 ): Promise<GeneratedQuestion[]> {
   const maxTokens = Math.min(64000, 2000 + 400 * totalQuestions);
   const outputInstruction = `Respond with ONLY a JSON object of this exact shape, no markdown fences or commentary:
@@ -239,7 +251,14 @@ The "questions" array must contain exactly ${totalQuestions} items.`;
       role: "user",
       parts: [
         {
-          text: buildPrompt(reviewerText, totalQuestions, types, difficulty, outputInstruction),
+          text: buildPrompt(
+            reviewerText,
+            totalQuestions,
+            types,
+            difficulty,
+            mode,
+            outputInstruction
+          ),
         },
       ],
     },
@@ -276,7 +295,8 @@ async function generateWithAnthropic(
   reviewerText: string,
   totalQuestions: number,
   types: QuestionType[],
-  difficulty: Difficulty
+  difficulty: Difficulty,
+  mode: QuizMode
 ): Promise<GeneratedQuestion[]> {
   const maxTokens = Math.min(64000, 2000 + 400 * totalQuestions);
 
@@ -288,6 +308,7 @@ async function generateWithAnthropic(
         totalQuestions,
         types,
         difficulty,
+        mode,
         `Call the record_questions tool exactly once with all ${totalQuestions} questions.`
       ),
     },

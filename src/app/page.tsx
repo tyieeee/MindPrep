@@ -1,6 +1,8 @@
 import UploadForm from "@/components/UploadForm";
 import FloatingLights from "@/components/FloatingLights";
 import WaveLines from "@/components/WaveLines";
+import FloatingPhoto from "@/components/FloatingPhoto";
+import HistoryButton from "@/components/HistoryButton";
 
 export default function HomePage() {
   return (
@@ -8,6 +10,7 @@ export default function HomePage() {
       <main className="relative flex flex-1 flex-col rounded-[28px] bg-white sm:rounded-[36px]">
         <FloatingLights />
         <WaveLines />
+        <FloatingPhoto />
         <div className="relative z-10 flex min-h-full flex-1 flex-col">
           <nav className="flex shrink-0 items-center justify-between px-6 py-3 sm:px-8 sm:py-4">
             <div className="flex items-center gap-3">
@@ -54,12 +57,7 @@ export default function HomePage() {
                 Shajie&apos;s Reviewer
               </span>
             </div>
-            <a
-              href="#upload"
-              className="rounded-full bg-[var(--color-accent)] px-5 py-2.5 text-sm font-semibold text-white transition [text-shadow:0_1px_3px_rgba(0,0,0,0.35)]"
-            >
-              Get started
-            </a>
+            <HistoryButton />
           </nav>
 
           <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 py-2 text-center">
