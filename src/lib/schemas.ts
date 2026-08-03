@@ -58,6 +58,16 @@ export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
   hard: "Hard",
 };
 
+export const QUIZ_MODES = ["content", "situational"] as const;
+
+export const QuizMode = z.enum(QUIZ_MODES);
+export type QuizMode = z.infer<typeof QuizMode>;
+
+export const QUIZ_MODE_LABELS: Record<QuizMode, string> = {
+  content: "From my reviewer",
+  situational: "Situational",
+};
+
 // Minutes offered on the configure screen; null = no limit.
 export const TIME_LIMIT_OPTIONS = [null, 5, 10, 15, 30] as const;
 
@@ -65,6 +75,7 @@ export const ConfigureRequestSchema = z.object({
   totalQuestions: z.number().int().min(1).max(50),
   types: z.array(QuestionType).min(1),
   difficulty: Difficulty.default("medium"),
+  mode: QuizMode.default("content"),
   timeLimitMinutes: z.number().int().min(1).max(180).nullable().default(null),
   // Exact custom limit (hours:minutes:seconds picker); wins over timeLimitMinutes.
   timeLimitSeconds: z.number().int().min(1).max(10800).nullable().default(null),

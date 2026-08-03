@@ -25,7 +25,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       { status: 400 }
     );
   }
-  const { totalQuestions, types, difficulty, timeLimitMinutes, timeLimitSeconds } =
+  const { totalQuestions, types, difficulty, mode, timeLimitMinutes, timeLimitSeconds } =
     parsedRequest.data;
 
   const { text, truncated } = truncateReviewerText(reviewer.content);
@@ -33,6 +33,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     where: { id: reviewerId },
     data: {
       difficulty,
+      mode,
       timeLimitSeconds:
         timeLimitSeconds ??
         (timeLimitMinutes === null ? null : timeLimitMinutes * 60),
@@ -42,7 +43,7 @@ export async function POST(request: Request, { params }: RouteParams) {
 
   let generated;
   try {
-    generated = await generateQuestions(text, totalQuestions, types, difficulty);
+    generated = await generateQuestions(text, totalQuestions, types, difficulty, mode);
   } catch (err) {
     console.error("Question generation failed:", err);
     const status = (err as { status?: number })?.status;

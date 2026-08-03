@@ -401,6 +401,20 @@ textarea.input { border-radius: var(--radius-lg); resize: vertical; padding: 13p
   opacity: 0.35;
 }
 
+/* — small score ring (history list) — */
+.score-circle-sm {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: #ffffff;
+}
+.score-circle-sm .score-pct {
+  font-size: 12px;
+  font-weight: 800;
+}
+
 /* — quiz countdown timer — */
 .quiz-timer {
   display: inline-flex;
@@ -994,6 +1008,18 @@ textarea.input { border-radius: var(--radius-lg); resize: vertical; padding: 13p
 }
 @media (prefers-reduced-motion: reduce) {
   .glow-orb { animation: none; }
+}
+
+/* — floating photo squares (landing hero) — */
+.floating-photo {
+  animation: floating-photo-bob var(--float-dur, 6s) ease-in-out var(--float-delay, 0s) infinite;
+}
+@keyframes floating-photo-bob {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .floating-photo { animation: none; }
 }
 
 /* — animated purple wave lines (landing) — */

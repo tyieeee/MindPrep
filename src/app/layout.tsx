@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Figtree, Dancing_Script } from "next/font/google";
 import "./globals.css";
 import PageShell from "@/components/PageShell";
+import HistoryProvider from "@/components/HistoryProvider";
 
 const figtree = Figtree({
   variable: "--font-body",
@@ -27,7 +28,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${figtree.variable} ${dancingScript.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
-        <PageShell>{children}</PageShell>
+        <HistoryProvider>
+          <PageShell>{children}</PageShell>
+        </HistoryProvider>
       </body>
     </html>
   );

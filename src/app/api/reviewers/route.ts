@@ -9,6 +9,33 @@ export const maxDuration = 60;
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10MB per file
 const MAX_FILES = 12;
 
+export async function GET() {
+  const reviewers = await prisma.reviewer.findMany({
+    where: { attempts: { some: {} } },
+    orderBy: { createdAt: "desc" },
+    take: 30,
+    select: {
+      id: true,
+      title: true,
+      createdAt: true,
+      attempts: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: { id: true, score: true, total: true },
+      },
+    },
+  });
+
+  const items = reviewers.map((r) => ({
+    id: r.id,
+    title: r.title,
+    createdAt: r.createdAt,
+    attempt: { id: r.attempts[0].id, score: r.attempts[0].score, total: r.attempts[0].total },
+  }));
+
+  return NextResponse.json({ items });
+}
+
 export async function POST(request: Request) {
   const form = await request.formData();
   const title = (form.get("title") as string | null)?.trim();

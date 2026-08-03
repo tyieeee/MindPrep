@@ -15,6 +15,7 @@ model Reviewer {
   sourceType       String // "text" | "pdf" | "docx" | "image"
   truncated        Boolean    @default(false)
   difficulty       String     @default("medium") // "easy" | "medium" | "hard"
+  mode             String     @default("content") // "content" | "situational"
   timeLimitSeconds Int? // null = no time limit
   createdAt  DateTime   @default(now())
   questions  Question[]

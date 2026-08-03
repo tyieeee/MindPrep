@@ -1,4 +1,4 @@
-import Link from "next/link";
+import ResultsNavActions from "@/components/ResultsNavActions";
 
 const PASS_MARK = 75;
 
@@ -27,6 +27,7 @@ export default function ResultsSummary({
 
   return (
     <div className="flex flex-col items-center gap-6 text-center">
+      <ResultsNavActions reviewerId={reviewerId} />
       <div className={`score-circle ${circleClass}`}>
         <svg className="score-ring" viewBox="0 0 128 128" aria-hidden>
           <circle
@@ -65,14 +66,6 @@ export default function ResultsSummary({
               ? "Well reviewed — you know this material well."
               : "Keep reviewing — check the answers below, each one has an explanation."}
         </p>
-        <div className="mp-no-print mt-1 flex flex-wrap justify-center gap-3">
-          <Link href={`/quiz/${reviewerId}`} className="btn btn-primary">
-            Retake this quiz
-          </Link>
-          <Link href={`/configure/${reviewerId}`} className="btn btn-secondary">
-            New quiz, same reviewer
-          </Link>
-        </div>
       </div>
     </div>
   );

@@ -7,15 +7,23 @@ import {
   DIFFICULTY_LABELS,
   QUESTION_TYPES,
   QUESTION_TYPE_LABELS,
+  QUIZ_MODES,
+  QUIZ_MODE_LABELS,
   TIME_LIMIT_OPTIONS,
   type Difficulty,
   type QuestionType,
+  type QuizMode,
 } from "@/lib/schemas";
 
 const DIFFICULTY_DESCRIPTIONS: Record<Difficulty, string> = {
   easy: "Straightforward recall of the main ideas and definitions from your reviewer.",
   medium: "A balanced mix of recall and understanding, the classic exam feel.",
   hard: "Tricky details, applications, and subtly wrong answers. Prove you know it.",
+};
+
+const QUIZ_MODE_DESCRIPTIONS: Record<QuizMode, string> = {
+  content: "Questions drawn straight from the facts and details in your reviewer.",
+  situational: "Real-world scenarios that make you apply what's in your reviewer, not just recall it.",
 };
 
 function formatDuration(totalSeconds: number) {
@@ -38,6 +46,7 @@ export default function ConfigureForm({ reviewerId }: { reviewerId: string }) {
   const router = useRouter();
   const [totalQuestions, setTotalQuestions] = useState(10);
   const [types, setTypes] = useState<QuestionType[]>([...QUESTION_TYPES]);
+  const [mode, setMode] = useState<QuizMode>("content");
   const [timeLimitMinutes, setTimeLimitMinutes] = useState<number | null>(null);
   const [customTime, setCustomTime] = useState(false);
   const [customSeconds, setCustomSeconds] = useState(20 * 60);
@@ -130,6 +139,7 @@ export default function ConfigureForm({ reviewerId }: { reviewerId: string }) {
           totalQuestions,
           types,
           difficulty,
+          mode,
           timeLimitMinutes: customTime ? null : timeLimitMinutes,
           timeLimitSeconds: customTime ? customSeconds : null,
         }),
@@ -191,6 +201,29 @@ export default function ConfigureForm({ reviewerId }: { reviewerId: string }) {
                 );
               })}
             </div>
+          </div>
+
+          <div>
+            <span className="mb-2 block text-sm font-bold">Exam mode</span>
+            <div className="flex flex-wrap gap-2.5">
+              {QUIZ_MODES.map((m) => {
+                const selected = mode === m;
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setMode(m)}
+                    aria-pressed={selected}
+                    className={`chip ${selected ? "chip-on" : ""}`}
+                  >
+                    {QUIZ_MODE_LABELS[m]}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-2 text-sm text-[var(--color-neutral-500)]">
+              {QUIZ_MODE_DESCRIPTIONS[mode]}
+            </p>
           </div>
 
           <div>
